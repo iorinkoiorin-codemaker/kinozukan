@@ -1,0 +1,53 @@
+
+workflows:
+  ios-build:
+    name: SwiftUI iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      xcode: latest
+
+    scripts:
+      - name: Extract ZIP and find project
+        script: |
+          set -euo pipefail
+
+          ZIP=$(find . -maxdepth 2 -type f -iname '*.zip' -print -quit)
+
+          if [ -z "$ZIP" ]; then
+            echo "Error: ZIP file not found in repository"
+            exit 1
+          fi
+
+          mkdir -p extracted
+          unzip -q "$ZIP" -d extracted
+
+          PROJECT=$(find extracted -name "*.xcodeproj" -print -quit)
+
+          if [ -z "$PROJECT" ]; then
+            echo "Error: Xcode project not found inside ZIP"
+            find extracted -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          echo "Found project: $PROJECT"
+          xcodebuild -project "$PROJECT" -list
+
+          SCHEME=$(xcodebuild -project "$PROJECT" -list -json | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("project",{}).get("schemes") or [""])[0])')
+
+          if [ -z "$SCHEME" ]; then
+            echo "Error: Xcode scheme not found"
+            exit 1
+          fi
+
+          echo "Using scheme: $SCHEME"
+
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
