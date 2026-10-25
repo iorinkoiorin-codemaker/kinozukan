@@ -1,0 +1,34 @@
+workflows:
+  ios-build:
+    name: SwiftUI iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      xcode: latest
+
+    scripts:
+      - name: Find Xcode project
+        script: |
+          find . -maxdepth 4 -name "*.xcodeproj"
+
+      - name: Build iOS app
+        script: |
+          PROJECT=$(find . -maxdepth 4 -name "*.xcodeproj" -print -quit)
+          if [ -z "$PROJECT" ]; then
+            echo "Error: Xcode project not found"
+            exit 1
+          fi
+
+          xcodebuild \
+            -project "$PROJECT" \
+            -list
+
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "機能図鑑" \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
